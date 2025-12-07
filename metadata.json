@@ -1,0 +1,5 @@
+{
+  "name": "圣诞帽生成器 (Santa Hat Gen)",
+  "description": "上传您的照片，AI 将自动为您戴上圣诞帽，让您的头像充满节日气氛。",
+  "requestFramePermissions": []
+}
