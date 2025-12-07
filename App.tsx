@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { ArrowRight, Download, RefreshCcw, Sparkles, Trash2, Camera, CircleUser, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, Download, RefreshCcw, Sparkles, Trash2, Camera, CircleUser, Check, AlertTriangle } from 'lucide-react';
 import { AppStatus, ImageFile } from './types';
 import { addSantaHatToImage } from './services/geminiService';
 import { prepareImageForAvatar } from './services/imageUtils';
@@ -14,6 +14,27 @@ const App: React.FC = () => {
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [optimizeForAvatar, setOptimizeForAvatar] = useState<boolean>(true);
+  
+  // API Key State Management
+  const [apiKey, setApiKey] = useState<string>('');
+
+  // Load API Key from local storage on mount
+  useEffect(() => {
+    const storedKey = localStorage.getItem('gemini_api_key');
+    if (storedKey) {
+      setApiKey(storedKey);
+    }
+  }, []);
+
+  // Save API Key to local storage whenever it changes
+  const handleSetApiKey = (key: string) => {
+    setApiKey(key);
+    if (key) {
+      localStorage.setItem('gemini_api_key', key);
+    } else {
+      localStorage.removeItem('gemini_api_key');
+    }
+  };
 
   const handleImageSelected = (image: ImageFile) => {
     setOriginalImage(image);
@@ -32,6 +53,15 @@ const App: React.FC = () => {
   const handleGenerate = async () => {
     if (!originalImage) return;
 
+    // Validate API Key existence (either in state or env)
+    // Note: We check this simply here for UI feedback, but the service also checks.
+    const hasEnvKey = typeof process !== 'undefined' && process.env && process.env.API_KEY;
+    if (!apiKey && !hasEnvKey) {
+      setErrorMessage("请先在右上角设置中配置您的 API Key");
+      setStatus(AppStatus.ERROR);
+      return;
+    }
+
     setStatus(AppStatus.PROCESSING);
     setErrorMessage(null);
 
@@ -49,9 +79,11 @@ const App: React.FC = () => {
         }
       }
 
+      // Pass the apiKey from state to the service
       const generatedImageBase64 = await addSantaHatToImage(
         imageToSend,
-        originalImage.mimeType // The MIME type remains largely compatible, or we could force PNG
+        originalImage.mimeType,
+        apiKey
       );
       setResultImage(generatedImageBase64);
       setStatus(AppStatus.SUCCESS);
@@ -74,7 +106,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header />
+      <Header apiKey={apiKey} setApiKey={handleSetApiKey} />
 
       <main className="flex-grow container mx-auto px-4 py-8 max-w-5xl">
         
@@ -188,12 +220,12 @@ const App: React.FC = () => {
               )}
 
               {status === AppStatus.ERROR && (
-                <div className="w-full h-80 bg-red-50 border border-red-100 rounded-2xl flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-full h-80 bg-red-50 border border-red-100 rounded-2xl flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
                   <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
-                    <RefreshCcw className="w-6 h-6" />
+                    <AlertTriangle className="w-6 h-6" />
                   </div>
-                  <h4 className="text-lg font-semibold text-slate-900 mb-2">生成失败</h4>
-                  <p className="text-slate-600 mb-6 text-sm">{errorMessage}</p>
+                  <h4 className="text-lg font-semibold text-slate-900 mb-2">生成中断</h4>
+                  <p className="text-slate-600 mb-6 text-sm max-w-xs mx-auto">{errorMessage}</p>
                   <button 
                     onClick={handleGenerate}
                     className="px-6 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"

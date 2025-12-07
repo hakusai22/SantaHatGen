@@ -6,6 +6,10 @@
     <title>圣诞帽生成器 - AI Photo Editor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+      // Polyfill process.env to avoid "process is not defined" error in browser
+      window.process = window.process || { env: { API_KEY: '' } };
+    </script>
     <style>
       body {
         font-family: 'Noto Sans SC', sans-serif;
