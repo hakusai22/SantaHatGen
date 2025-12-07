@@ -17,9 +17,27 @@ const App: React.FC = () => {
   
   // API Key State Management
   const [apiKey, setApiKey] = useState<string>('');
+  const [hasEnvKey, setHasEnvKey] = useState<boolean>(false);
 
-  // Load API Key from local storage on mount
+  // Check for Env Key availability safely on mount
   useEffect(() => {
+    const checkEnvKey = () => {
+       try {
+         // Check process.env (Standard/CRA)
+         if (typeof process !== 'undefined' && (process.env?.API_KEY || process.env?.VITE_API_KEY || process.env?.REACT_APP_API_KEY)) return true;
+         // Check import.meta.env (Vite)
+         // @ts-ignore
+         if (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_API_KEY || import.meta.env?.API_KEY)) return true;
+         // Check window (Polyfill)
+         if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) return true;
+         return false;
+       } catch {
+         return false;
+       }
+    };
+    setHasEnvKey(checkEnvKey());
+
+    // Load stored key
     const storedKey = localStorage.getItem('gemini_api_key');
     if (storedKey) {
       setApiKey(storedKey);
@@ -53,9 +71,7 @@ const App: React.FC = () => {
   const handleGenerate = async () => {
     if (!originalImage) return;
 
-    // Validate API Key existence (either in state or env)
-    // Note: We check this simply here for UI feedback, but the service also checks.
-    const hasEnvKey = typeof process !== 'undefined' && process.env && process.env.API_KEY;
+    // Logic: If no user entered key AND no env key detected, show error
     if (!apiKey && !hasEnvKey) {
       setErrorMessage("请先在右上角设置中配置您的 API Key");
       setStatus(AppStatus.ERROR);

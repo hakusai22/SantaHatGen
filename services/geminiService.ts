@@ -2,6 +2,32 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
+ * Safely retrieves the API Key from various environment configurations.
+ * Supports Vite (import.meta.env), CRA/Node (process.env), and Global Polyfills.
+ */
+const getEnvApiKey = (): string => {
+  try {
+    // 1. Try standard process.env (Node/Webpack/CRA)
+    if (typeof process !== 'undefined' && process.env?.API_KEY) return process.env.API_KEY;
+    if (typeof process !== 'undefined' && process.env?.VITE_API_KEY) return process.env.VITE_API_KEY;
+    if (typeof process !== 'undefined' && process.env?.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY;
+    
+    // 2. Try Vite's import.meta.env (modern browsers/Vite)
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env?.API_KEY) return import.meta.env.API_KEY;
+
+    // 3. Fallback to window object polyfill
+    if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) return (window as any).process.env.API_KEY;
+    
+    return '';
+  } catch (e) {
+    return '';
+  }
+};
+
+/**
  * Sends the image to Gemini to add a Santa hat.
  * @param base64Data Raw base64 string of the original image
  * @param mimeType Mime type of the image (e.g., image/jpeg)
@@ -10,11 +36,12 @@ import { GoogleGenAI } from "@google/genai";
  */
 export const addSantaHatToImage = async (base64Data: string, mimeType: string, apiKey?: string): Promise<string> => {
   try {
-    // Prioritize the user-provided key, fallback to env var
-    const keyToUse = apiKey || process.env.API_KEY;
+    // Logic: User Provided Key > Env Variable Key
+    const envKey = getEnvApiKey();
+    const keyToUse = apiKey && apiKey.trim() !== '' ? apiKey : envKey;
 
     if (!keyToUse) {
-      throw new Error("未检测到 API Key。请点击右上角设置图标输入您的 Google Gemini API Key。");
+      throw new Error("未检测到 API Key。请点击右上角设置图标输入您的 Google Gemini API Key，或在部署环境中配置环境变量。");
     }
 
     // Initialize the client dynamically to support changing keys at runtime
